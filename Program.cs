@@ -396,7 +396,7 @@ namespace pakcomposer
             }
         }
 
-        private static bool DoUnpackExist() => File.Exists("comptoe");
+        private static bool DoUnpackExist() => File.Exists("comptoe.exe");
 
         private static bool IsPacked(byte[] file)
         {
@@ -409,7 +409,7 @@ namespace pakcomposer
         private static void DoExtract(string fileoriginal, string filenew)
         {
             ProcessStartInfo psi = new ProcessStartInfo();
-            psi.FileName = "comptoe";
+            psi.FileName = "comptoe.exe";
             psi.RedirectStandardInput = true;
             psi.RedirectStandardOutput = true;
             psi.Arguments = string.Format("-d {0} {1}", fileoriginal, filenew);
@@ -420,7 +420,7 @@ namespace pakcomposer
         private static void DoCompress(string filedecompressed, string filecompressed)
         {
             ProcessStartInfo psi = new ProcessStartInfo();
-            psi.FileName = "comptoe";
+            psi.FileName = "comptoe.exe";
             psi.RedirectStandardInput = true;
             psi.RedirectStandardOutput = true;
             psi.Arguments = string.Format("-c {0} {1}", filedecompressed, filecompressed);
@@ -573,7 +573,7 @@ namespace pakcomposer
                 Console.WriteLine("-x - try to set extensions to files");
                 Console.WriteLine("-v - verbose mode");
                 Console.WriteLine("-a - align files to 16 bytes");
-                Console.WriteLine("-u - automatically use comptoe (needs comptoe be in the same folder as {0}.exe)", (object)processName);
+                Console.WriteLine("-u - automatically use comptoe.exe (needs comptoe.exe be in the same folder as {0}.exe)", (object)processName);
                 Console.WriteLine("-tod2_ps2_skit_padding - padding addition mode");
                 Console.WriteLine(" ");
                 Program.ColorWritePlus(ConsoleColor.Yellow, ConsoleColor.Blue, "WARNING! DON'T WORK WITH FILES WITH");
