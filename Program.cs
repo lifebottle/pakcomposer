@@ -131,6 +131,8 @@ namespace pakcomposer
                 return ".weac";
             if (head.Length >= 4 && head[0] == (byte)69 && (head[1] == (byte)78 && head[2] == (byte)69) && head[3] == (byte)77)
                 return ".enem";
+            if (head.Length >= 4 && head[0] == (byte)47 && (head[1] == (byte)52 && head[2] == (byte)50) && head[3] == (byte)43)
+                return ".enem";
             return head.Length >= 4 && head[0] == (byte)3 && (head[1] != (byte)0 || head[2] != (byte)0 || head[3] != (byte)0) ? ".compress" : ".unknown";
         }
 
