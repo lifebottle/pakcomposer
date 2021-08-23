@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.IO;
 
 namespace pakcomposer
@@ -22,6 +23,22 @@ namespace pakcomposer
         private static List<int> dFileSizes = new List<int>();
         private static List<byte[]> dFiles = new List<byte[]>();
         private static List<string> dFileNames = new List<string>();
+
+        // File extension headers
+        private static readonly byte[] ToD1RSCE4Head = new byte[] { 84, 79, 68, 49, 82, 83, 67, 69, 52 };
+        private static readonly byte[] d1rxgmHead = new byte[] { 68, 49, 82, 88, 71, 77 };
+        private static readonly byte[] tm2Head = new byte[] { 84, 73, 77, 50 };
+        private static readonly byte[] tm2HeadAlt = new byte[] { 84, 77, 50, 64 };
+        private static readonly byte[] MdlHead = new byte[] { 77, 68, 76, 64 };
+        private static readonly byte[] EffeHead = new byte[] { 69, 70, 70, 69 };
+        private static readonly byte[] Anp3Head = new byte[] { 97, 110, 112, 51 };
+        private static readonly byte[] Se2Head = new byte[] { 105, 83, 69, 50 };
+        private static readonly byte[] LvdHead = new byte[] { 105, 76, 86, 68 };
+        private static readonly byte[] ScedHead = new byte[] { 83, 67, 69, 68 };
+        private static readonly byte[] TheirsceHead = new byte[] { 84, 72, 69, 73 };
+        private static readonly byte[] WeacHead = new byte[] { 87, 69, 65, 67 };
+        private static readonly byte[] EnemHead = new byte[] { 69, 78, 69, 77 };
+        private static readonly byte[] GrpcHead = new byte[] { 71, 82, 80, 67 };
 
         private static void ColorWrite(ConsoleColor Color, string str, params object[] args)
         {
@@ -53,127 +70,134 @@ namespace pakcomposer
         {
             DN = Path.GetFileNameWithoutExtension(DN);
             if (number < 10)
-                return DN + "_000" + (object)number;
+                return DN + "_000" + number;
             if (number < 100)
-                return DN + "_00" + (object)number;
-            return number < 1000 ? DN + "_0" + (object)number : DN + "_" + (object)number;
+                return DN + "_00" + number;
+            return number < 1000 ? DN + "_0" + number : DN + "_" + number;
         }
 
         private static void GetFlags(string[] args)
         {
             for (int index = 0; index < args.Length; ++index)
             {
-                if (args[index] == "-d" && Program.gMode == 'N')
+                if (args[index] == "-d" && gMode == 'N')
                 {
-                    Program.gMode = 'D';
+                    gMode = 'D';
                     if (index + 1 < args.Length)
-                        Program.gObject = args[index + 1];
+                        gObject = args[index + 1];
                 }
-                else if (args[index] == "-c" && Program.gMode == 'N')
+                else if (args[index] == "-c" && gMode == 'N')
                 {
-                    Program.gMode = 'C';
+                    gMode = 'C';
                     if (index + 1 < args.Length)
-                        Program.gObject = args[index + 1];
+                        gObject = args[index + 1];
                 }
-                else if (args[index] == "-t" && Program.gMode == 'N')
+                else if (args[index] == "-t" && gMode == 'N')
                 {
-                    Program.gMode = 'T';
+                    gMode = 'T';
                     if (index + 1 < args.Length)
-                        Program.gObject = args[index + 1];
+                        gObject = args[index + 1];
                 }
                 else
                 {
-                    if (args[index] == "-0" && Program.gSubMode == 'N')
-                        Program.gSubMode = '0';
-                    if (args[index] == "-1" && Program.gSubMode == 'N')
-                        Program.gSubMode = '1';
-                    if (args[index] == "-3" && Program.gSubMode == 'N')
-                        Program.gSubMode = '3';
+                    if (args[index] == "-0" && gSubMode == 'N')
+                        gSubMode = '0';
+                    if (args[index] == "-1" && gSubMode == 'N')
+                        gSubMode = '1';
+                    if (args[index] == "-3" && gSubMode == 'N')
+                        gSubMode = '3';
                     if (args[index] == "-x")
-                        Program.gDoExtensions = true;
+                        gDoExtensions = true;
                     if (args[index] == "-v")
-                        Program.gDoVerbose = true;
+                        gDoVerbose = true;
                     if (args[index] == "-a")
-                        Program.gDoAlign = true;
+                        gDoAlign = true;
                     if (args[index] == "-u")
-                        Program.gDoUnpack = true;
+                        gDoUnpack = true;
                     if (args[index] == "-tod2_ps2_skit_padding")
-                        Program.gDoToD2 = true;
+                        gDoToD2 = true;
                 }
             }
         }
 
         private static string GetExtension(byte[] head)
         {
-            if (head.Length >= 9 && head[0] == (byte)84 && (head[1] == (byte)79 && head[2] == (byte)68) && (head[3] == (byte)49 && head[4] == (byte)82 && (head[5] == (byte)83 && head[6] == (byte)67)) && (head[7] == (byte)69 && head[8] == (byte)52))
+            if (head.Length >= 9 && head.Take(9).SequenceEqual(ToD1RSCE4Head))
                 return ".tod1rsce4";
-            if (head.Length >= 8 && head[0] == (byte)84 && (head[1] == (byte)79 && head[2] == (byte)68) && (head[3] == (byte)49 && head[4] == (byte)82 && (head[5] == (byte)83 && head[6] == (byte)67)) && head[7] == (byte)69)
+            if (head.Length >= 8 && head.Take(8).SequenceEqual(ToD1RSCE4Head.Take(8)))
                 return ".tod1rsce";
-            if (head.Length >= 6 && head[0] == (byte)68 && (head[1] == (byte)49 && head[2] == (byte)82) && (head[3] == (byte)88 && head[4] == (byte)71 && head[5] == (byte)77))
+            if (head.Length >= 6 && head.Take(6).SequenceEqual(d1rxgmHead))
                 return ".d1rxgm";
-            if (head.Length >= 4 && head[0] == (byte)84 && (head[1] == (byte)73 && head[2] == (byte)77) && head[3] == (byte)50 || head.Length >= 4 && head[0] == (byte)84 && (head[1] == (byte)77 && head[2] == (byte)50) && head[3] == (byte)64)
+
+            if (head.Length < 4)
+                return ".unknown";
+
+            var first4Bytes = head.Take(4);
+
+            if (first4Bytes.SequenceEqual(tm2Head) || first4Bytes.SequenceEqual(tm2HeadAlt))
                 return ".tm2";
-            if (head.Length >= 4 && head[0] == (byte)77 && (head[1] == (byte)68 && head[2] == (byte)76) && head[3] == (byte)64)
+            if (first4Bytes.SequenceEqual(MdlHead))
                 return ".mdl";
-            if (head.Length >= 4 && head[0] == (byte)69 && (head[1] == (byte)70 && head[2] == (byte)70) && head[3] == (byte)69)
+            if (first4Bytes.SequenceEqual(EffeHead))
                 return ".effe";
-            if (head.Length >= 4 && head[0] == (byte)97 && (head[1] == (byte)110 && head[2] == (byte)112) && head[3] == (byte)51)
+            if (first4Bytes.SequenceEqual(Anp3Head))
                 return ".anp3";
-            if (head.Length >= 4 && head[0] == (byte)105 && (head[1] == (byte)83 && head[2] == (byte)69) && head[3] == (byte)50)
+            if (first4Bytes.SequenceEqual(Se2Head))
                 return ".se2";
-            if (head.Length >= 4 && head[0] == (byte)105 && (head[1] == (byte)76 && head[2] == (byte)86) && head[3] == (byte)68)
+            if (first4Bytes.SequenceEqual(LvdHead))
                 return ".lvd";
-            if (head.Length >= 4 && head[0] == (byte)83 && (head[1] == (byte)67 && head[2] == (byte)69) && head[3] == (byte)68)
+            if (first4Bytes.SequenceEqual(ScedHead))
                 return ".sced";
-            if (head.Length >= 4 && head[0] == (byte)84 && (head[1] == (byte)72 && head[2] == (byte)69) && head[3] == (byte)73)
+            if (first4Bytes.SequenceEqual(TheirsceHead))
                 return ".theirsce";
-            if (head.Length >= 4 && head[0] == (byte)87 && (head[1] == (byte)69 && head[2] == (byte)65) && head[3] == (byte)67)
+            if (first4Bytes.SequenceEqual(WeacHead))
                 return ".weac";
-            if (head.Length >= 4 && head[0] == (byte)69 && (head[1] == (byte)78 && head[2] == (byte)69) && head[3] == (byte)77)
+            if (first4Bytes.SequenceEqual(EnemHead))
                 return ".enem";
-            if (head.Length >= 4 && head[0] == (byte)71 && (head[1] == (byte)82 && head[2] == (byte)80) && head[3] == (byte)67)
+            if (first4Bytes.SequenceEqual(GrpcHead))
                 return ".grpc";
-            return head.Length >= 4 && head[0] == (byte)3 && (head[1] != (byte)0 || head[2] != (byte)0 || head[3] != (byte)0) ? ".compress" : ".unknown";
+
+            return IsPacked(head) ? ".compress" : ".unknown";
         }
 
-        private static void GetFileCount() => Program.dFileCount = BitConverter.ToInt32(Program.dMainFile, 0);
+        private static void GetFileCount() => dFileCount = BitConverter.ToInt32(dMainFile, 0);
 
         private static void GetDeconstructiveInformation()
         {
-            switch (Program.gSubMode)
+            switch (gSubMode)
             {
                 case '0':
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        Program.dFileSizes.Add(BitConverter.ToInt32(Program.dMainFile, 4 + index * 4));
-                    int num = 4 + 4 * Program.dFileCount;
-                    for (int index = 0; index < Program.dFileCount; ++index)
+                    for (int index = 0; index < dFileCount; ++index)
+                        dFileSizes.Add(BitConverter.ToInt32(dMainFile, 4 + index * 4));
+                    int num = 4 + 4 * dFileCount;
+                    for (int index = 0; index < dFileCount; ++index)
                     {
-                        Program.dFileOffsets.Add(num);
-                        num += Program.dFileSizes[index];
+                        dFileOffsets.Add(num);
+                        num += dFileSizes[index];
                     }
                     break;
                 case '1':
-                    for (int index = 0; index < Program.dFileCount; ++index)
+                    for (int index = 0; index < dFileCount; ++index)
                     {
-                        Program.dFileOffsets.Add(BitConverter.ToInt32(Program.dMainFile, 4 + index * 8));
-                        Program.dFileSizes.Add(BitConverter.ToInt32(Program.dMainFile, 8 + index * 8));
+                        dFileOffsets.Add(BitConverter.ToInt32(dMainFile, 4 + index * 8));
+                        dFileSizes.Add(BitConverter.ToInt32(dMainFile, 8 + index * 8));
                     }
                     break;
                 case '3':
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        Program.dFileOffsets.Add(BitConverter.ToInt32(Program.dMainFile, 4 + index * 4));
-                    for (int index = 0; index < Program.dFileCount - 1; ++index)
-                        Program.dFileSizes.Add(Program.dFileOffsets[index + 1] - Program.dFileOffsets[index]);
-                    Program.dFileSizes.Add(Program.dMainFile.Length - Program.dFileOffsets[Program.dFileCount - 1]);
+                    for (int index = 0; index < dFileCount; ++index)
+                        dFileOffsets.Add(BitConverter.ToInt32(dMainFile, 4 + index * 4));
+                    for (int index = 0; index < dFileCount - 1; ++index)
+                        dFileSizes.Add(dFileOffsets[index + 1] - dFileOffsets[index]);
+                    dFileSizes.Add(dMainFile.Length - dFileOffsets[dFileCount - 1]);
                     break;
             }
         }
 
         private static bool CheckForFileSizeError()
         {
-            for (int index = 0; index < Program.dFileCount; ++index)
+            for (int index = 0; index < dFileCount; ++index)
             {
-                if (Program.dFileSizes[index] == 0)
+                if (dFileSizes[index] == 0)
                     return true;
             }
             return false;
@@ -181,11 +205,11 @@ namespace pakcomposer
 
         private static bool CheckForDupeOffsets()
         {
-            for (int index1 = 0; index1 < Program.dFileCount - 1; ++index1)
+            for (int index1 = 0; index1 < dFileCount - 1; ++index1)
             {
-                for (int index2 = index1 + 1; index2 < Program.dFileCount; ++index2)
+                for (int index2 = index1 + 1; index2 < dFileCount; ++index2)
                 {
-                    if (Program.dFileOffsets[index1] == Program.dFileOffsets[index2])
+                    if (dFileOffsets[index1] == dFileOffsets[index2])
                         return true;
                 }
             }
@@ -194,186 +218,185 @@ namespace pakcomposer
 
         private static void CreateFilesInRam()
         {
-            for (int index = 0; index < Program.dFileCount; ++index)
+            for (int index = 0; index < dFileCount; ++index)
             {
-                byte[] numArray = new byte[Program.dFileSizes[index]];
-                Array.Copy((Array)Program.dMainFile, Program.dFileOffsets[index], (Array)numArray, 0, Program.dFileSizes[index]);
-                Program.dFiles.Add(numArray);
+                byte[] numArray = new byte[dFileSizes[index]];
+                Array.Copy(dMainFile, dFileOffsets[index], numArray, 0, dFileSizes[index]);
+                dFiles.Add(numArray);
             }
         }
 
         private static void AssignFileNames()
         {
-            for (int index = 0; index < Program.dFileCount; ++index)
+            for (int index = 0; index < dFileCount; ++index)
             {
-                string fileName = Program.GetFileName(Program.dDirectoryName, index);
-                if (Program.gDoExtensions)
-                    fileName += Program.GetExtension(Program.dFiles[index]);
-                Program.dFileNames.Add(fileName);
+                string fileName = GetFileName(dDirectoryName, index);
+                if (gDoExtensions)
+                    fileName += GetExtension(dFiles[index]);
+                dFileNames.Add(fileName);
             }
         }
 
         private static void CreateFiles()
         {
-            if (Program.gDoUnpack && Program.DoUnpackExist())
+            if (gDoUnpack && DoUnpackExist())
             {
-                for (int index = 0; index < Program.dFileCount; ++index)
+                for (int index = 0; index < dFileCount; ++index)
                 {
-                    BinaryWriter binaryWriter1 = new BinaryWriter((Stream)File.Open(Program.dDirectoryName + "/" + Program.dFileNames[index], FileMode.Create));
-                    binaryWriter1.Write(Program.dFiles[index]);
+                    BinaryWriter binaryWriter1 = new BinaryWriter(File.Open(dDirectoryName + "/" + dFileNames[index], FileMode.Create));
+                    binaryWriter1.Write(dFiles[index]);
                     binaryWriter1.Close();
-                    if (Program.gDoVerbose)
-                        Program.ColorWrite(ConsoleColor.DarkYellow, "File '{0}' has been created!", (object)Program.dFileNames[index]);
-                    if (Program.IsPacked(Program.dFiles[index]))
+                    if (gDoVerbose)
+                        ColorWrite(ConsoleColor.DarkYellow, "File '{0}' has been created!", dFileNames[index]);
+                    if (IsPacked(dFiles[index]))
                     {
-                        string str = Program.dDirectoryName + "/" + Program.GetFileName(Program.dDirectoryName, index) + "d";
-                        Program.DoExtract(Program.dDirectoryName + "/" + Program.dFileNames[index], str);
+                        string str = dDirectoryName + "/" + GetFileName(dDirectoryName, index) + "d";
+                        DoExtract(dDirectoryName + "/" + dFileNames[index], str);
                         if (!File.Exists(str))
                         {
-                            Program.ColorWrite(ConsoleColor.Red, "File '{0}' has not been created!", (object)str);
+                            ColorWrite(ConsoleColor.Red, "File '{0}' has not been created!", str);
                         }
                         else
                         {
-                            if (Program.gDoExtensions)
+                            if (gDoExtensions)
                             {
                                 byte[] numArray = File.ReadAllBytes(str);
                                 File.Delete(str);
-                                if (Program.gDoVerbose)
-                                    Program.ColorWrite(ConsoleColor.DarkRed, "File '{0}' has been deleted!", (object)str);
-                                str += Program.GetExtension(numArray);
-                                BinaryWriter binaryWriter2 = new BinaryWriter((Stream)File.Open(str, FileMode.Create));
+                                if (gDoVerbose)
+                                    ColorWrite(ConsoleColor.DarkRed, "File '{0}' has been deleted!", str);
+                                str += GetExtension(numArray);
+                                BinaryWriter binaryWriter2 = new BinaryWriter(File.Open(str, FileMode.Create));
                                 binaryWriter2.Write(numArray);
                                 binaryWriter2.Close();
                             }
-                            if (Program.gDoVerbose)
-                                Program.ColorWrite(ConsoleColor.DarkGreen, "File '{0}' has been decrypted to '{1}'!", (object)Program.dFileNames[index], (object)str.Substring(Program.dDirectoryName.Length + 1));
+                            if (gDoVerbose)
+                                ColorWrite(ConsoleColor.DarkGreen, "File '{0}' has been decrypted to '{1}'!", dFileNames[index], str.Substring(dDirectoryName.Length + 1));
                         }
                     }
                 }
             }
             else
             {
-                for (int index = 0; index < Program.dFileCount; ++index)
+                for (int index = 0; index < dFileCount; ++index)
                 {
-                    BinaryWriter binaryWriter = new BinaryWriter((Stream)File.Open(Program.dDirectoryName + "/" + Program.dFileNames[index], FileMode.Create));
-                    binaryWriter.Write(Program.dFiles[index]);
+                    BinaryWriter binaryWriter = new BinaryWriter(File.Open(dDirectoryName + "/" + dFileNames[index], FileMode.Create));
+                    binaryWriter.Write(dFiles[index]);
                     binaryWriter.Close();
-                    if (Program.gDoVerbose)
-                        Program.ColorWrite(ConsoleColor.DarkYellow, "File '{0}' has been created!", (object)Program.dFileNames[index]);
+                    if (gDoVerbose)
+                        ColorWrite(ConsoleColor.DarkYellow, "File '{0}' has been created!", dFileNames[index]);
                 }
             }
         }
 
         private static void GetFiles()
         {
-            if (Program.gDoUnpack && Program.DoUnpackExist())
+            if (gDoUnpack && DoUnpackExist())
             {
-                for (Program.dFileCount = 0; Directory.GetFiles(Program.dDirectoryName, Program.GetFileName(Program.dDirectoryName, Program.dFileCount) + "*").Length > 0; ++Program.dFileCount)
+                for (dFileCount = 0; Directory.GetFiles(dDirectoryName, GetFileName(dDirectoryName, dFileCount) + "*").Length > 0; ++dFileCount)
                 {
-                    string fileName = Program.GetFileName(Program.dDirectoryName, Program.dFileCount);
-                    string[] files1 = Directory.GetFiles(Program.dDirectoryName, fileName + "d*");
+                    string fileName = GetFileName(dDirectoryName, dFileCount);
+                    string[] files1 = Directory.GetFiles(dDirectoryName, fileName + "d*");
                     if (files1.Length > 0)
                     {
-                        Program.DoCompress(files1[0], files1[0] + "c");
-                        Program.dFiles.Add(File.ReadAllBytes(files1[0] + "c"));
+                        DoCompress(files1[0], files1[0] + "c");
+                        dFiles.Add(File.ReadAllBytes(files1[0] + "c"));
                         File.Delete(files1[0] + "c");
-                        if (Program.gDoVerbose)
-                            Program.ColorWrite(ConsoleColor.Yellow, "File '{0}' was compressed before adding to RAM!", (object)files1[0].Substring(6));
+                        if (gDoVerbose)
+                            ColorWrite(ConsoleColor.Yellow, "File '{0}' was compressed before adding to RAM!", files1[0].Substring(6));
                     }
                     else
                     {
-                        string[] files2 = Directory.GetFiles(Program.dDirectoryName, fileName + "*");
+                        string[] files2 = Directory.GetFiles(dDirectoryName, fileName + "*");
                         if (files2.Length == 0)
                         {
-                            Program.ColorWrite(ConsoleColor.Red, "ERROR! No file called '{0}' found!", (object)fileName);
+                            ColorWrite(ConsoleColor.Red, "ERROR! No file called '{0}' found!", fileName);
                             Environment.Exit(0);
                         }
-                        Program.dFiles.Add(File.ReadAllBytes(files2[0]));
-                        if (Program.gDoVerbose)
-                            Program.ColorWrite(ConsoleColor.Yellow, "File '{0}' added to RAM!", (object)files2[0].Substring(6));
+                        dFiles.Add(File.ReadAllBytes(files2[0]));
+                        if (gDoVerbose)
+                            ColorWrite(ConsoleColor.Yellow, "File '{0}' added to RAM!", files2[0].Substring(6));
                     }
                 }
             }
             else
             {
-                for (Program.dFileCount = 0; Directory.GetFiles(Program.dDirectoryName, Program.GetFileName(Program.dDirectoryName, Program.dFileCount) + "*").Length > 0; ++Program.dFileCount)
+                for (dFileCount = 0; Directory.GetFiles(dDirectoryName, GetFileName(dDirectoryName, dFileCount) + "*").Length > 0; ++dFileCount)
                 {
-                    string fileName = Program.GetFileName(Program.dDirectoryName, Program.dFileCount);
-                    string[] files = Directory.GetFiles(Program.dDirectoryName, fileName + "*");
+                    string fileName = GetFileName(dDirectoryName, dFileCount);
+                    string[] files = Directory.GetFiles(dDirectoryName, fileName + "*");
                     if (files.Length > 0)
                     {
-                        Program.dFiles.Add(File.ReadAllBytes(files[0]));
-                        if (Program.gDoVerbose)
-                            Program.ColorWrite(ConsoleColor.Yellow, "File '{0}' added to RAM!", (object)files[0].Substring(6));
+                        dFiles.Add(File.ReadAllBytes(files[0]));
+                        if (gDoVerbose)
+                            ColorWrite(ConsoleColor.Yellow, "File '{0}' added to RAM!", files[0].Substring(6));
                     }
                 }
             }
         }
 
-        private static bool CheckForNoneFiles() => Program.dFileCount == 0;
+        private static bool CheckForNoneFiles() => dFileCount == 0;
 
         private static void SetConstructiveInformation()
         {
             int num = 0;
-            for (int index = 0; index < Program.dFileCount; ++index)
+            for (int index = 0; index < dFileCount; ++index)
             {
-                Program.dFileSizes.Add(Program.dFiles[index].Length);
+                dFileSizes.Add(dFiles[index].Length);
                 if (gDoAlign)
                     while (num % 16 != 0)
                         num++;
-                Program.dFileOffsets.Add(num);
-                num += Program.dFileSizes[index];
+                dFileOffsets.Add(num);
+                num += dFileSizes[index];
             }
-            if (!Program.gDoToD2)
-                return;
-            Program.ChangeFile();
+            if (gDoToD2)
+                ChangeFile();
         }
 
         private static void DoAssemble()
         {
-            BinaryWriter binaryWriter = new BinaryWriter((Stream)File.Open(string.Format(Program.gObject + ".pak{0}", (object)Program.gSubMode), FileMode.Create));
-            switch (Program.gSubMode)
+            BinaryWriter binaryWriter = new BinaryWriter(File.Open(string.Format(gObject + ".pak{0}", gSubMode), FileMode.Create));
+            switch (gSubMode)
             {
                 case '0':
-                    binaryWriter.Write(Program.dFileCount);
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        binaryWriter.Write(Program.dFileSizes[index]);
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        binaryWriter.Write(Program.dFiles[index]);
+                    binaryWriter.Write(dFileCount);
+                    for (int index = 0; index < dFileCount; ++index)
+                        binaryWriter.Write(dFileSizes[index]);
+                    for (int index = 0; index < dFileCount; ++index)
+                        binaryWriter.Write(dFiles[index]);
                     break;
                 case '1':
-                    int num1 = 4 + 8 * Program.dFileCount;
+                    int num1 = 4 + 8 * dFileCount;
 
                     if (gDoAlign)
                         while (num1 % 16 != 0)
                             num1++;
 
-                    binaryWriter.Write(Program.dFileCount);
-                    for (int index = 0; index < Program.dFileCount; ++index)
+                    binaryWriter.Write(dFileCount);
+                    for (int index = 0; index < dFileCount; ++index)
                     {
-                        binaryWriter.Write(Program.dFileOffsets[index] + num1);
-                        binaryWriter.Write(Program.dFileSizes[index]);
+                        binaryWriter.Write(dFileOffsets[index] + num1);
+                        binaryWriter.Write(dFileSizes[index]);
                     }
 
                     if (gDoAlign)
                         while (binaryWriter.BaseStream.Position % 16 != 0)
-                            binaryWriter.Write((byte)0);
+                            binaryWriter.Write(0);
 
-                    for (int index = 0; index < Program.dFileCount; ++index)
+                    for (int index = 0; index < dFileCount; ++index)
                     {
-                        binaryWriter.Write(Program.dFiles[index]);
+                        binaryWriter.Write(dFiles[index]);
                         if (gDoAlign)
                             while (binaryWriter.BaseStream.Position % 16 != 0)
-                                binaryWriter.Write((byte)0);
+                                binaryWriter.Write(0);
                     }
                     break;
                 case '3':
-                    int num2 = 4 + 4 * Program.dFileCount;
-                    binaryWriter.Write(Program.dFileCount);
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        binaryWriter.Write(Program.dFileOffsets[index] + num2);
-                    for (int index = 0; index < Program.dFileCount; ++index)
-                        binaryWriter.Write(Program.dFiles[index]);
+                    int num2 = 4 + 4 * dFileCount;
+                    binaryWriter.Write(dFileCount);
+                    for (int index = 0; index < dFileCount; ++index)
+                        binaryWriter.Write(dFileOffsets[index] + num2);
+                    for (int index = 0; index < dFileCount; ++index)
+                        binaryWriter.Write(dFiles[index]);
                     break;
             }
             binaryWriter.Close();
@@ -381,31 +404,26 @@ namespace pakcomposer
 
         private static void ChangeFile()
         {
-            int num1 = (4 + 8 * Program.dFileCount + Program.dFileSizes[0] + Program.dFileSizes[1] + Program.dFileSizes[2]) % 16;
+            int num1 = (4 + 8 * dFileCount + dFileSizes[0] + dFileSizes[1] + dFileSizes[2]) % 16;
             if (num1 <= 0)
                 return;
             int num2 = 16 - num1;
-            byte[] numArray = new byte[Program.dFileSizes[2] + num2];
+            byte[] numArray = new byte[dFileSizes[2] + num2];
             numArray.Initialize();
-            Program.dFiles[2].CopyTo((Array)numArray, 0);
-            Program.dFiles[2] = numArray;
-            Program.dFileSizes[2] = Program.dFiles[2].Length;
+            dFiles[2].CopyTo(numArray, 0);
+            dFiles[2] = numArray;
+            dFileSizes[2] = dFiles[2].Length;
             int num3 = 0;
-            for (int index = 0; index < Program.dFileCount; ++index)
+            for (int index = 0; index < dFileCount; ++index)
             {
-                Program.dFileOffsets[index] = num3;
-                num3 += Program.dFileSizes[index];
+                dFileOffsets[index] = num3;
+                num3 += dFileSizes[index];
             }
         }
 
         private static bool DoUnpackExist() => File.Exists("comptoe.exe");
 
-        private static bool IsPacked(byte[] file)
-        {
-            if (file[0] != (byte)3)
-                return false;
-            return file[1] != (byte)0 || file[2] != (byte)0 || file[3] != (byte)0;
-        }
+        private static bool IsPacked(byte[] file) => file[0] == 3 && (file[1] != 0 || file[2] != 0 || file[3] != 0);
 
         //shoutout to Ethanol
         private static void DoExtract(string fileoriginal, string filenew)
@@ -432,100 +450,100 @@ namespace pakcomposer
 
         private static void DoDeconstruct()
         {
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.White, "Reading all bytes of initial file into RAM...");
-            Program.dMainFile = File.ReadAllBytes(Program.gObject);
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.White, "Reading first 4 bytes (count of files)...");
-            Program.GetFileCount();
-            Program.ColorWrite(ConsoleColor.Green, "Count of files inside archive: {0}", (object)Program.dFileCount);
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.White, "Extracting information about offsets and sizes...");
-            Program.GetDeconstructiveInformation();
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.White, "Information extracted. Showing information about sizes and offsets.");
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.Yellow, "File offsets: ");
-            if (Program.gDoVerbose)
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.White, "Reading all bytes of initial file into RAM...");
+            dMainFile = File.ReadAllBytes(gObject);
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.White, "Reading first 4 bytes (count of files)...");
+            GetFileCount();
+            ColorWrite(ConsoleColor.Green, "Count of files inside archive: {0}", dFileCount);
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.White, "Extracting information about offsets and sizes...");
+            GetDeconstructiveInformation();
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.White, "Information extracted. Showing information about sizes and offsets.");
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.Yellow, "File offsets: ");
+            if (gDoVerbose)
             {
-                for (int index = 0; index < Program.dFileCount; ++index)
-                    Program.ColorWrite(ConsoleColor.White, Program.dFileOffsets[index].ToString());
+                for (int index = 0; index < dFileCount; ++index)
+                    ColorWrite(ConsoleColor.White, dFileOffsets[index].ToString());
             }
-            if (Program.gDoVerbose)
+            if (gDoVerbose)
                 Console.WriteLine();
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.Yellow, "File sizes: ");
-            if (Program.gDoVerbose)
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.Yellow, "File sizes: ");
+            if (gDoVerbose)
             {
-                for (int index = 0; index < Program.dFileCount; ++index)
-                    Program.ColorWrite(ConsoleColor.White, Program.dFileSizes[index].ToString());
+                for (int index = 0; index < dFileCount; ++index)
+                    ColorWrite(ConsoleColor.White, dFileSizes[index].ToString());
             }
-            if (Program.gDoVerbose)
+            if (gDoVerbose)
                 Console.WriteLine();
-            if (Program.CheckForFileSizeError())
-                Program.ColorWrite(ConsoleColor.Red, "Error! One of files have negative or zero file size!");
-            else if (Program.CheckForDupeOffsets())
+            if (CheckForFileSizeError())
+                ColorWrite(ConsoleColor.Red, "Error! One of files have negative or zero file size!");
+            else if (CheckForDupeOffsets())
             {
-                Program.ColorWrite(ConsoleColor.Red, "Error! One of files have same offset as another!");
+                ColorWrite(ConsoleColor.Red, "Error! One of files have same offset as another!");
             }
             else
             {
-                Program.ColorWrite(ConsoleColor.Green, "No errors found!");
-                if (Program.gDoVerbose)
-                    Program.ColorWrite(ConsoleColor.White, "Creating files inside RAM...");
-                Program.CreateFilesInRam();
-                if (Program.gDoVerbose)
-                    Program.ColorWrite(ConsoleColor.White, "Assigning file names...");
-                Program.AssignFileNames();
-                if (File.Exists(Program.dDirectoryName))
-                    Program.ColorWrite(ConsoleColor.Red, "Error! File '{0}' exists! Can't proceed!", (object)Program.dDirectoryName);
-                else if (Directory.Exists(Program.dDirectoryName))
+                ColorWrite(ConsoleColor.Green, "No errors found!");
+                if (gDoVerbose)
+                    ColorWrite(ConsoleColor.White, "Creating files inside RAM...");
+                CreateFilesInRam();
+                if (gDoVerbose)
+                    ColorWrite(ConsoleColor.White, "Assigning file names...");
+                AssignFileNames();
+                if (File.Exists(dDirectoryName))
+                    ColorWrite(ConsoleColor.Red, "Error! File '{0}' exists! Can't proceed!", dDirectoryName);
+                else if (Directory.Exists(dDirectoryName))
                 {
-                    Program.ColorWrite(ConsoleColor.Red, "Error! Directory '{0}' exists! Can't proceed!", (object)Program.dDirectoryName);
+                    ColorWrite(ConsoleColor.Red, "Error! Directory '{0}' exists! Can't proceed!", dDirectoryName);
                 }
                 else
                 {
-                    Program.ColorWrite(ConsoleColor.Green, "Creating new directory '{0}' to store files...", (object)Program.dDirectoryName);
-                    Directory.CreateDirectory(Program.dDirectoryName);
-                    Program.ColorWrite(ConsoleColor.Green, "Creating files...");
-                    Program.CreateFiles();
-                    Program.ColorWritePlus(ConsoleColor.White, ConsoleColor.Gray, "All work done!");
+                    ColorWrite(ConsoleColor.Green, "Creating new directory '{0}' to store files...", dDirectoryName);
+                    Directory.CreateDirectory(dDirectoryName);
+                    ColorWrite(ConsoleColor.Green, "Creating files...");
+                    CreateFiles();
+                    ColorWritePlus(ConsoleColor.White, ConsoleColor.Gray, "All work done!");
                 }
             }
         }
 
         private static void DoConstruct()
         {
-            if (Program.gDoVerbose)
-                Program.ColorWrite(ConsoleColor.White, "Reading all files from folder into RAM...");
-            Program.GetFiles();
-            if (Program.CheckForNoneFiles())
+            if (gDoVerbose)
+                ColorWrite(ConsoleColor.White, "Reading all files from folder into RAM...");
+            GetFiles();
+            if (CheckForNoneFiles())
             {
-                Program.ColorWrite(ConsoleColor.Red, "Error! There is no complitable files in folder!");
+                ColorWrite(ConsoleColor.Red, "Error! There is no complitable files in folder!");
             }
             else
             {
-                Program.ColorWrite(ConsoleColor.Green, "Count of files inside directory: {0}", (object)Program.dFileCount);
-                if (Program.gDoVerbose)
-                    Program.ColorWrite(ConsoleColor.White, "Getting information for construction...");
-                Program.SetConstructiveInformation();
-                string path = Program.dDirectoryName + ".pak" + (object)Program.gSubMode;
+                ColorWrite(ConsoleColor.Green, "Count of files inside directory: {0}", dFileCount);
+                if (gDoVerbose)
+                    ColorWrite(ConsoleColor.White, "Getting information for construction...");
+                SetConstructiveInformation();
+                string path = dDirectoryName + ".pak" + gSubMode;
                 if (File.Exists(path))
                 {
-                    Program.ColorWrite(ConsoleColor.Red, "Error! File '{0}' is already exists!", (object)path);
+                    ColorWrite(ConsoleColor.Red, "Error! File '{0}' is already exists!", path);
                 }
                 else
                 {
-                    Program.ColorWrite(ConsoleColor.Green, "Assembling '{0}'...", (object)path);
-                    Program.DoAssemble();
-                    Program.ColorWritePlus(ConsoleColor.White, ConsoleColor.Gray, "All work done!");
+                    ColorWrite(ConsoleColor.Green, "Assembling '{0}'...", path);
+                    DoAssemble();
+                    ColorWritePlus(ConsoleColor.White, ConsoleColor.Gray, "All work done!");
                 }
             }
         }
 
         private static void DoTest()
         {
-            byte[] numArray = File.ReadAllBytes(Program.gObject);
+            byte[] numArray = File.ReadAllBytes(gObject);
             List<int> intList = new List<int>();
             List<string> stringList = new List<string>();
             for (int index = 0; index < 30; ++index)
@@ -533,22 +551,22 @@ namespace pakcomposer
                 intList.Add(BitConverter.ToInt32(numArray, index * 4));
                 stringList.Add(BitConverter.ToString(numArray, index * 4, 4));
             }
-            Program.ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(1)");
-            Program.ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", (object)intList[0], (object)stringList[0]);
-            Program.ColorWrite(ConsoleColor.Yellow, "Next bytes:");
+            ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(1)");
+            ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", intList[0], stringList[0]);
+            ColorWrite(ConsoleColor.Yellow, "Next bytes:");
             for (int index = 1; index < 30; ++index)
-                Program.ColorWrite(ConsoleColor.White, "{0} ({1})", (object)intList[index], (object)stringList[index]);
-            Program.ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(2)");
-            Program.ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", (object)intList[0], (object)stringList[0]);
-            Program.ColorWrite(ConsoleColor.Yellow, "Next bytes:");
+                ColorWrite(ConsoleColor.White, "{0} ({1})", intList[index], stringList[index]);
+            ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(2)");
+            ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", intList[0], stringList[0]);
+            ColorWrite(ConsoleColor.Yellow, "Next bytes:");
             for (int index = 1; index < 15; ++index)
-                Program.ColorWrite(ConsoleColor.White, "{0} ({1}) | {2} ({3})", (object)intList[2 * index - 1], (object)stringList[2 * index - 1], (object)intList[2 * index], (object)stringList[2 * index]);
-            Program.ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(3)");
-            Program.ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", (object)intList[0], (object)stringList[0]);
-            Program.ColorWrite(ConsoleColor.Yellow, "Next bytes:");
+                ColorWrite(ConsoleColor.White, "{0} ({1}) | {2} ({3})", intList[2 * index - 1], stringList[2 * index - 1], intList[2 * index], stringList[2 * index]);
+            ColorWritePlus(ConsoleColor.White, ConsoleColor.Blue, "Mode: 1/(3)");
+            ColorWrite(ConsoleColor.Yellow, "First 4bytes: {0} ({1})", intList[0], stringList[0]);
+            ColorWrite(ConsoleColor.Yellow, "Next bytes:");
             for (int index = 1; index < 10; ++index)
-                Program.ColorWrite(ConsoleColor.White, "{0} ({1}) | {2} ({3}) | {4} ({5})", (object)intList[3 * index - 2], (object)stringList[3 * index - 2], (object)intList[3 * index - 1], (object)stringList[3 * index - 1], (object)intList[3 * index], (object)stringList[3 * index]);
-            Program.ColorWrite(ConsoleColor.Cyan, "Test ended!");
+                ColorWrite(ConsoleColor.White, "{0} ({1}) | {2} ({3}) | {4} ({5})", intList[3 * index - 2], stringList[3 * index - 2], intList[3 * index - 1], stringList[3 * index - 1], intList[3 * index], stringList[3 * index]);
+            ColorWrite(ConsoleColor.Cyan, "Test ended!");
         }
 
         private static void Main(string[] args)
@@ -556,10 +574,10 @@ namespace pakcomposer
             if (args.Length == 0 || args[0] == "-help")
             {
                 string processName = Process.GetCurrentProcess().ProcessName;
-                Program.ColorWrite(ConsoleColor.Green, "Pakcomposer .NET 5.0 Version");
-                Program.ColorWrite(ConsoleColor.Green, "Generously donated by Temple of Tales Translations team");
-                Program.ColorWrite(ConsoleColor.Green, "http://temple-tales.ru/translations.html");
-                Program.ColorWrite(ConsoleColor.White, "Program that disassembles and assembles archives from Tales of... game series.");
+                ColorWrite(ConsoleColor.Green, "Pakcomposer .NET 5.0 Version");
+                ColorWrite(ConsoleColor.Green, "Generously donated by Temple of Tales Translations team");
+                ColorWrite(ConsoleColor.Green, "http://temple-tales.ru/translations.html");
+                ColorWrite(ConsoleColor.White, "Program that disassembles and assembles archives from Tales of... game series.");
                 Console.WriteLine("Usage:");
                 Console.WriteLine(processName + " ([action flag] [file/folder name]) ([mode flag]) ([addictional flags])");
                 Console.WriteLine(" ");
@@ -575,11 +593,11 @@ namespace pakcomposer
                 Console.WriteLine("-x - try to set extensions to files");
                 Console.WriteLine("-v - verbose mode");
                 Console.WriteLine("-a - align files to 16 bytes");
-                Console.WriteLine("-u - automatically use comptoe.exe (needs comptoe.exe be in the same folder as {0}.exe)", (object)processName);
+                Console.WriteLine("-u - automatically use comptoe.exe (needs comptoe.exe be in the same folder as {0}.exe)", processName);
                 Console.WriteLine("-tod2_ps2_skit_padding - padding addition mode");
                 Console.WriteLine(" ");
-                Program.ColorWritePlus(ConsoleColor.Yellow, ConsoleColor.Blue, "WARNING! DON'T WORK WITH FILES WITH");
-                Program.ColorWritePlus(ConsoleColor.Yellow, ConsoleColor.Blue, "EXTENSIONS WHEN COMPRESSING BACK! BE CAREFUL!");
+                ColorWritePlus(ConsoleColor.Yellow, ConsoleColor.Blue, "WARNING! DON'T WORK WITH FILES WITH");
+                ColorWritePlus(ConsoleColor.Yellow, ConsoleColor.Blue, "EXTENSIONS WHEN COMPRESSING BACK! BE CAREFUL!");
                 Console.WriteLine(" ");
                 Console.WriteLine("Examples of usage:");
                 Console.WriteLine(processName + " -d 00000.pak0 -0 -u");
@@ -591,32 +609,32 @@ namespace pakcomposer
             }
             else
             {
-                Program.GetFlags(args);
-                if (Program.gMode == 'N')
-                    Program.ColorWrite(ConsoleColor.Red, "Error - you haven't specified main flag! (-d or -c)");
-                else if (Program.gObject == "" || Program.gMode == 'D' && !File.Exists(Program.gObject) || (Program.gMode == 'T' && !File.Exists(Program.gObject) || Program.gMode == 'C' && !Directory.Exists(Program.gObject)))
-                    Program.ColorWrite(ConsoleColor.Red, "Error - you specified wrong filename/directory!");
-                else if (Program.gSubMode == 'N')
+                GetFlags(args);
+                if (gMode == 'N')
+                    ColorWrite(ConsoleColor.Red, "Error - you haven't specified main flag! (-d or -c)");
+                else if (gObject == "" || gMode == 'D' && !File.Exists(gObject) || (gMode == 'T' && !File.Exists(gObject) || gMode == 'C' && !Directory.Exists(gObject)))
+                    ColorWrite(ConsoleColor.Red, "Error - you specified wrong filename/directory!");
+                else if (gSubMode == 'N')
                 {
-                    Program.ColorWrite(ConsoleColor.Red, "Error - you haven't specified mode flag! (-0 or -1 or -3)");
+                    ColorWrite(ConsoleColor.Red, "Error - you haven't specified mode flag! (-0 or -1 or -3)");
                 }
                 else
                 {
-                    switch (Program.gMode)
+                    switch (gMode)
                     {
                         case 'C':
-                            Program.ColorWrite(ConsoleColor.White, "Composition to '{0}.pak{1}' started", (object)Program.gObject, (object)Program.gSubMode);
-                            Program.dDirectoryName = Program.gObject;
-                            Program.DoConstruct();
+                            ColorWrite(ConsoleColor.White, "Composition to '{0}.pak{1}' started", gObject, gSubMode);
+                            dDirectoryName = gObject;
+                            DoConstruct();
                             break;
                         case 'D':
-                            Program.ColorWrite(ConsoleColor.White, "Decomposition of '{0}' started", (object)Program.gObject, (object)Program.gSubMode);
-                            Program.dDirectoryName = Program.CutToExtension(Program.gObject);
-                            Program.DoDeconstruct();
+                            ColorWrite(ConsoleColor.White, "Decomposition of '{0}' started", gObject, gSubMode);
+                            dDirectoryName = CutToExtension(gObject);
+                            DoDeconstruct();
                             break;
                         case 'T':
-                            Program.ColorWrite(ConsoleColor.White, "Testing of '{0}' started!", (object)Program.gObject);
-                            Program.DoTest();
+                            ColorWrite(ConsoleColor.White, "Testing of '{0}' started!", gObject);
+                            DoTest();
                             break;
                     }
                 }
