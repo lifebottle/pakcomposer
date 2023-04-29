@@ -15,7 +15,8 @@ namespace pakcomposer
         private static bool gDoVerbose = false;
         private static bool gDoUnpack = false;
         private static bool gDoToD2 = false;
-        private static bool gDoAlign = false;
+        private static bool gDoAlignFiles = false;
+        private static bool gDoAlignHeader = false;
         private static byte[] dMainFile;
         private static string dDirectoryName;
         private static int dFileCount;
@@ -110,8 +111,15 @@ namespace pakcomposer
                         gDoExtensions = true;
                     if (args[index] == "-v")
                         gDoVerbose = true;
+                    if (args[index] == "-af")
+                        gDoAlignFiles = true;
+                    if (args[index] == "-ah")
+                        gDoAlignHeader = true;
                     if (args[index] == "-a")
-                        gDoAlign = true;
+                    {
+                        gDoAlignFiles = true;
+                        gDoAlignHeader = true;
+                    }
                     if (args[index] == "-u")
                         gDoUnpack = true;
                     if (args[index] == "-tod2_ps2_skit_padding")
@@ -341,15 +349,17 @@ namespace pakcomposer
             int num = 0;
             for (int index = 0; index < dFileCount; ++index)
             {
-                dFileSizes.Add(dFiles[index].Length);
-                if (gDoAlign)
+                if (gDoAlignFiles)
+                {
                     while (num % 16 != 0)
                         num++;
+                }
                 dFileOffsets.Add(num);
                 num += dFileSizes[index];
             }
             if (gDoToD2)
                 ChangeFile();
+            ChangeFile();
         }
 
         private static void DoAssemble()
@@ -367,7 +377,7 @@ namespace pakcomposer
                 case '1':
                     int num1 = 4 + 8 * dFileCount;
 
-                    if (gDoAlign)
+                    if (gDoAlignHeader)
                         while (num1 % 16 != 0)
                             num1++;
 
@@ -378,23 +388,29 @@ namespace pakcomposer
                         binaryWriter.Write(dFileSizes[index]);
                     }
 
-                    if (gDoAlign)
+                    if (gDoAlignHeader)
                         while (binaryWriter.BaseStream.Position % 16 != 0)
                             binaryWriter.Write(0);
 
                     for (int index = 0; index < dFileCount; ++index)
                     {
                         binaryWriter.Write(dFiles[index]);
-                        if (gDoAlign)
+                        if (gDoAlignFiles)
                             while (binaryWriter.BaseStream.Position % 16 != 0)
                                 binaryWriter.Write(0);
                     }
                     break;
                 case '3':
                     int num2 = 4 + 4 * dFileCount;
+                    if (gDoAlignHeader)
+                        while (num2 % 16 != 0)
+                            num2++;
                     binaryWriter.Write(dFileCount);
                     for (int index = 0; index < dFileCount; ++index)
                         binaryWriter.Write(dFileOffsets[index] + num2);
+                    if (gDoAlignHeader)
+                        while (binaryWriter.BaseStream.Position % 16 != 0)
+                            binaryWriter.Write((byte)0);
                     for (int index = 0; index < dFileCount; ++index)
                         binaryWriter.Write(dFiles[index]);
                     break;
@@ -592,7 +608,9 @@ namespace pakcomposer
                 Console.WriteLine("Additional flags:");
                 Console.WriteLine("-x - try to set extensions to files");
                 Console.WriteLine("-v - verbose mode");
-                Console.WriteLine("-a - align files to 16 bytes");
+                Console.WriteLine("-ah - align header to 16 bytes");
+                Console.WriteLine("-af - align files to 16 bytes");
+                Console.WriteLine("-a - align everything to 16 bytes");
                 Console.WriteLine("-u - automatically use comptoe.exe (needs comptoe.exe be in the same folder as {0}.exe)", processName);
                 Console.WriteLine("-tod2_ps2_skit_padding - padding addition mode");
                 Console.WriteLine(" ");
